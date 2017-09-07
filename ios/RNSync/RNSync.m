@@ -282,4 +282,107 @@ RCT_EXPORT_METHOD(find: (NSDictionary *)query fields:(NSArray *)fields databaseN
     callback(@[[NSNull null], resultList]);
 }
 
+
+// indexes is an array of dictionaries with a single entry, the key is the name of the index and the value is an array of properties (NSStrins)
+
+// types can be:
+// CDTQIndexTypeText = @"TEXT"
+// CDTQIndexTypeJSON = @"JSON"
+// Types and indexes size needs to match
+
+
+RCT_EXPORT_METHOD(createIndexes: (NSArray*)indexes types: (NSArray*)types databaseName:(NSString*) databaseName callback:(RCTResponseSenderBlock)callback)
+{
+    
+    
+    CDTDatastore* datastore = datastores[databaseName];
+    
+    
+    // TODO: list existing indexes and remove the indexes that need recreation
+    // NSLog(@"indexes %@", [datastore listIndexes]);
+    // [datastore deleteIndexNamed:@"Some name"];
+    
+    
+    // 1. Iterate through the list of types and separate the indexes by that
+    // 2. Take the list of JSON indexes and iterate with something like the thing below
+    // 3. Take the list of TEXT indexes if > 0 check that text search is available
+    // 4. Then iterate the list of TEXT indexes as below
+    // 5. If some index is nil return an error
+    // 6. I all indexes exists then return success and update all indexes
+    
+    NSMutableArray* jsonIndexes = [NSMutableArray new];
+    NSMutableArray* textIndexes = [NSMutableArray new];
+    NSMutableArray* computedIndexes = [NSMutableArray new];
+    
+    NSError* error = nil;
+    
+    [types enumerateObjectsUsingBlock:^(NSString*  _Nonnull type, NSUInteger idx, BOOL * _Nonnull stop) {
+        if([type isEqualToString:@"JSON"]) {
+            [jsonIndexes addObject:indexes[idx]];
+        } else if ([type isEqualToString:@"TEXT"]) {
+            [textIndexes addObject:indexes[idx]];
+        } else {
+            error = [[NSError alloc] initWithDomain:@"RNSync" code:-1 userInfo:@{@"message": "Non valid index type"}];
+            stop = TRUE;
+        }
+    }];
+    
+    if(jsonIndexes.count > 0 && !error) {
+        
+        [jsonIndexes enumerateObjectsUsingBlock:^(NSDictionary*  _Nonnull jsonIndex, NSUInteger idx, BOOL * _Nonnull stop) {
+            
+            if([jsonIndex count] == 1) {
+                NSString* index = [datastore ensureIndexed:[jsonIndex allValues][0]
+                                                  withName:[jsonIndex allKeys][0]
+                                                    ofType:CDTQIndexTypeJSON];
+                if (index == nil) {
+                    error = [[NSError alloc] initWithDomain:@"RNSync" code:-2 userInfo:@{@"message": [NSString stringWithFormat:@"Non valid index build for %@ %@", [jsonIndex allKeys], [jsonIndex allValues]]}];
+                    stop = TRUE;
+                }
+            } else {
+                error = [[NSError alloc] initWithDomain:@"RNSync" code:-2 userInfo:@{@"message": [NSString stringWithFormat:@"Non valid input data to build index for %@ %@", [jsonIndex allKeys], [jsonIndex allValues]]}];
+                stop = TRUE;
+            }
+        }];
+    }
+    
+    
+    if (textIndexes.count > 0 && !error) {
+        if ([datastore isTextSearchEnabled]) {
+            // We can just set the tokenizer on settings as of now
+            // "porter" is a little bit more fancy than "simple"
+            // http://tartarus.org/~martin/PorterStemmer/
+            // https://www.sqlite.org/fts3.html#tokenizer  (point 8)
+            NSDictionary *settings = @{@"tokenize": @"porter unicode61"};
+            NSString *name1 =
+            
+            [textIndexes enumerateObjectsUsingBlock:^(NSDictionary*  _Nonnull textIndex, NSUInteger idx, BOOL * _Nonnull stop) {
+                if([textIndex count] == 1) {
+                    NSString* index = [datastore ensureIndexed:[textIndex allValues][0]
+                                                      withName:[textIndex allKeys][0]
+                                                        ofType:CDTQIndexTypeText
+                                                      settings:settings];
+                    if (index == nil) {
+                        error = [[NSError alloc] initWithDomain:@"RNSync" code:-2 userInfo:@{@"message": [NSString stringWithFormat:@"Non valid index build for %@ %@", [textIndex allKeys], [textIndex allValues]]}];
+                        stop = TRUE;
+                    }
+                } else {
+                    error = [[NSError alloc] initWithDomain:@"RNSync" code:-2 userInfo:@{@"message": [NSString stringWithFormat:@"Non valid input data to build index for %@ %@", [textIndex allKeys], [textIndex allValues]]}];
+                    stop = TRUE;
+                }
+            }];
+        } else {
+            NSLog(@"text search is not enabled");
+            error = [[NSError alloc] initWithDomain:@"RNSync" code:-2 userInfo:@{@"message": [NSString stringWithFormat:@"Non valid input data to build index for %@ %@", [jsonIndex allKeys], [jsonIndex allValues]]}];
+        }
+    }
+    
+    if (!error) {
+        [datastore updateAllIndexes]; // optimise times after pull but not necessary
+        NSLog(@"indexes %@", [datastore listIndexes]);
+        callback( nil, [datastore listIndexes]);
+    }
+    callback(error, nil);
+}
+
 @end
