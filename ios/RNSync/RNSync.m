@@ -9,13 +9,13 @@
 #import "RNSync.h"
 #import <React/RCTBridge.h>
 #import <React/RCTEventDispatcher.h>
-#import "ReplicationManager.h";
+#import "ReplicationManager.h"
 #import "CloudantSync.h"
 
 
 @implementation RNSync
 {
-    CDTDatastore *datastore;
+    NSMutableDictionary *datastores;
     CDTDatastoreManager *manager;
     CDTReplicator *replicator;
     CDTReplicatorFactory *replicatorFactory;
@@ -40,7 +40,7 @@ RCT_EXPORT_MODULE();
 }
 
 // TODO need to let them name their own datastore! else could conflict with other apps?
-RCT_EXPORT_METHOD(init: (NSString *)databaseUrl callback:(RCTResponseSenderBlock)callback)
+RCT_EXPORT_METHOD(init: (NSString *)databaseUrl databaseName:(NSString*) databaseName callback:(RCTResponseSenderBlock)callback)
 {
     // Create a CDTDatastoreManager using application internal storage path
     NSError *error = nil;
@@ -51,16 +51,24 @@ RCT_EXPORT_METHOD(init: (NSString *)databaseUrl callback:(RCTResponseSenderBlock
     NSURL *storeURL = [documentsDir URLByAppendingPathComponent:@"datastores"];
     NSString *path = [storeURL path];
     
-    manager = [[CDTDatastoreManager alloc] initWithDirectory:path error:&error];
+    
+    if(!manager) {
+        manager = [[CDTDatastoreManager alloc] initWithDirectory:path error:&error];
+    }
+    
     
     if(error)
     {
         callback(@[[NSNumber numberWithLong:error.code]]);
         return;
     }
+    if (!datastores) {
+        datastores = [NSMutableDictionary new]
+    }
     
-    // TODO datastore name needs to be configurable
-    datastore = [manager datastoreNamed:@"rnsync_datastore" error:&error];
+    // Make name of the datastore the same than the database
+    // Store this in a dictionary so we can have more than one?
+    datastores[databaseName] = [manager datastoreNamed:databaseName error:&error];
     
     if(error)
     {
@@ -87,7 +95,7 @@ RCT_EXPORT_METHOD(replicatePull: (RCTResponseSenderBlock)callback)
     [replicationManager pull: callback];
 }
 
-RCT_EXPORT_METHOD(create: body id:(NSString*)id callback:(RCTResponseSenderBlock)callback)
+RCT_EXPORT_METHOD(create: body id:(NSString*)id databaseName:(NSString*) databaseName callback:(RCTResponseSenderBlock)callback)
 {
     NSError *error = nil;
     
@@ -112,7 +120,7 @@ RCT_EXPORT_METHOD(create: body id:(NSString*)id callback:(RCTResponseSenderBlock
     
     // Save the document to the database
     // revision is nil on failure
-    CDTDocumentRevision *revision = [datastore createDocumentFromRevision:rev error:&error];
+    CDTDocumentRevision *revision = [datastores[databaseName] createDocumentFromRevision:rev error:&error];
     if(!revision)
     {
         callback(@[@"document failed to save"]);
@@ -130,11 +138,11 @@ RCT_EXPORT_METHOD(create: body id:(NSString*)id callback:(RCTResponseSenderBlock
     
 }
 
-RCT_EXPORT_METHOD(addAttachment: id name:(NSString*)name path:(NSString*)path type:(NSString*)type callback:(RCTResponseSenderBlock)callback)
+RCT_EXPORT_METHOD(addAttachment: id name:(NSString*)name path:(NSString*)path type:(NSString*)type databaseName:(NSString*) databaseName callback:(RCTResponseSenderBlock)callback)
 {
     NSError *error = nil;
     
-    CDTDocumentRevision *revision = [datastore getDocumentWithId:id error:&error];
+    CDTDocumentRevision *revision = [datastores[databaseName] getDocumentWithId:id error:&error];
     
     if(error)
     {
@@ -150,7 +158,7 @@ RCT_EXPORT_METHOD(addAttachment: id name:(NSString*)name path:(NSString*)path ty
     
     revision.attachments[att.name] = att;
     
-    CDTDocumentRevision *updated = [datastore updateDocumentFromRevision:revision error:&error];
+    CDTDocumentRevision *updated = [datastores[databaseName] updateDocumentFromRevision:revision error:&error];
     
     NSDictionary *dict = @{ @"id" : updated.docId, @"rev" : updated.revId, @"body" : updated.body };
     
@@ -164,12 +172,12 @@ RCT_EXPORT_METHOD(addAttachment: id name:(NSString*)name path:(NSString*)path ty
     }
 }
 
-RCT_EXPORT_METHOD(retrieve: (NSString *)id callback:(RCTResponseSenderBlock)callback)
+RCT_EXPORT_METHOD(retrieve: (NSString *)id databaseName:(NSString*) databaseName callback:(RCTResponseSenderBlock)callback)
 {
     NSError *error = nil;
     
     // Read a document
-    CDTDocumentRevision *revision = [datastore getDocumentWithId:id error:&error];
+    CDTDocumentRevision *revision = [datastores[databaseName] getDocumentWithId:id error:&error];
     
     if(!error)
     {
@@ -183,17 +191,17 @@ RCT_EXPORT_METHOD(retrieve: (NSString *)id callback:(RCTResponseSenderBlock)call
     }
 }
 
-RCT_EXPORT_METHOD(update: (NSString *)id rev:(NSString *)rev  body:(NSDictionary *)body callback:(RCTResponseSenderBlock)callback)
+RCT_EXPORT_METHOD(update: (NSString *)id rev:(NSString *)rev body:(NSDictionary *)body databaseName:(NSString*) databaseName callback:(RCTResponseSenderBlock)callback)
 {
     NSError *error = nil;
     
     // Read a document
-    CDTDocumentRevision *retrieved = [datastore getDocumentWithId:id rev:rev error:&error];
+    CDTDocumentRevision *retrieved = [datastores[databaseName] getDocumentWithId:id rev:rev error:&error];
     
     retrieved.body = (NSMutableDictionary*)body;
     
-    CDTDocumentRevision *updated = [datastore updateDocumentFromRevision:retrieved
-                                                                   error:&error];
+    CDTDocumentRevision *updated = [datastores[databaseName] updateDocumentFromRevision:retrieved
+                                                                                  error:&error];
     
     NSDictionary *dict = @{ @"id" : updated.docId, @"rev" : updated.revId, @"body" : updated.body };
     
@@ -208,7 +216,7 @@ RCT_EXPORT_METHOD(update: (NSString *)id rev:(NSString *)rev  body:(NSDictionary
 }
 
 
-RCT_EXPORT_METHOD(delete: (NSString *)id callback:(RCTResponseSenderBlock)callback)
+RCT_EXPORT_METHOD(delete: (NSString *)id databaseName:(NSString*) databaseName callback:(RCTResponseSenderBlock)callback)
 {
     if(!id)
     {
@@ -219,10 +227,10 @@ RCT_EXPORT_METHOD(delete: (NSString *)id callback:(RCTResponseSenderBlock)callba
     
     NSError *error = nil;
     
-    CDTDocumentRevision *retrieved = [datastore getDocumentWithId:id error:&error];
+    CDTDocumentRevision *retrieved = [datastores[databaseName] getDocumentWithId:id error:&error];
     
-    [datastore deleteDocumentFromRevision:retrieved
-                                    error:&error];
+    [datastores[databaseName] deleteDocumentFromRevision:retrieved
+                                                   error:&error];
     if(!error)
     {
         //NSArray *params = @[[NSNumber numberWithBool:deleted]];
@@ -233,11 +241,11 @@ RCT_EXPORT_METHOD(delete: (NSString *)id callback:(RCTResponseSenderBlock)callba
     }
 }
 
-RCT_EXPORT_METHOD(deleteDatastore: (RCTResponseSenderBlock)callback)
+RCT_EXPORT_METHOD(deleteDatastoreWithName:(NSString*) databaseName callback(RCTResponseSenderBlock)callback)
 {
     NSError *error = nil;
     
-    BOOL deleted = [manager deleteDatastoreNamed:@"rnsync_datastore" error: &error];
+    BOOL deleted = [manager deleteDatastoreNamed:databaseName error: &error];
     
     if(!error)
     {
@@ -252,16 +260,16 @@ RCT_EXPORT_METHOD(deleteDatastore: (RCTResponseSenderBlock)callback)
 
 // TODO the results of the query could be huge (run out of memory huge).  Need param for how many items
 // to return and paging to get the rest
-RCT_EXPORT_METHOD(find: (NSDictionary *)query fields:(NSArray *)fields callback:(RCTResponseSenderBlock)callback)
+RCT_EXPORT_METHOD(find: (NSDictionary *)query fields:(NSArray *)fields databaseName:(NSString*) databaseName callback:(RCTResponseSenderBlock)callback)
 {
     // TODO waste to new up resultList for every call
     NSMutableArray* resultList = [[NSMutableArray alloc] init];
     
-    CDTQResultSet *result = [datastore find:query
-                                       skip:0
-                                      limit:0
-                                     fields:fields
-                                       sort:nil];
+    CDTQResultSet *result = [datastores[databaseName] find:query
+                                                      skip:0
+                                                     limit:0
+                                                    fields:fields
+                                                      sort:nil];
     
     [result enumerateObjectsUsingBlock:^(CDTDocumentRevision *rev, NSUInteger idx, BOOL *stop)
      {

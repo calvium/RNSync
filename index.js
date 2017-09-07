@@ -7,7 +7,7 @@ const noop = () =>
 
 class RNSyncStorage {
 
-    setItem ( key, value, callback )
+    setItem ( key, value, databaseName, callback )
     {
         callback = callback || noop;
 
@@ -18,20 +18,20 @@ class RNSyncStorage {
         {
             if(error)     // should be 404
             {
-                rnsyncModule.create( body, key, callback );
+                rnsyncModule.create( body, key, databaseName, callback );
             }
             else
             {
-                rnsyncModule.update( doc.id, doc.key, body, callback );
+                rnsyncModule.update( doc.id, doc.key, body, databaseName, callback );
             }
         } );
     }
 
-    getItem ( key, callback )
+    getItem ( key, databaseName, callback )
     {
         callback = callback || noop;
 
-        rnsyncModule.retrieve( key, ( error, doc ) =>
+        rnsyncModule.retrieve( key, databaseName, ( error, doc ) =>
         {
             let item = error ? null : doc.body.value;
 
@@ -40,21 +40,21 @@ class RNSyncStorage {
 
     }
 
-    removeItem ( key, callback )
+    removeItem ( key, databaseName, callback )
     {
         callback = callback || noop;
 
-        rnsyncModule.delete( key, callback );
+        rnsyncModule.delete( key, databaseName, callback );
     }
 
-    getAllKeys ( callback )
+    getAllKeys ( databaseName, callback )
     {
         callback = callback || noop;
 
         // using _id as the field isn't right (since the body doesn't contain an _id) but
         // it keeps the body from returning since the field doesn't exist
         // TODO try ' '?
-        rnsyncModule.find( {'_id': {'$exists': true } }, ['_id'], ( error, docs ) =>
+        rnsyncModule.find( {'_id': {'$exists': true } }, ['_id'], databaseName, ( error, docs ) =>
         {
             if(error)
             {
@@ -75,9 +75,9 @@ class RNSyncStorage {
         } );
     }
 
-    deleteAllKeys( callback )
+    deleteAllKeys( databaseName, callback )
     {
-        this.getAllKeys( (error, keys ) =>
+        this.getAllKeys( databaseName, (error, keys ) =>
         {
             if(error)
             {
@@ -87,7 +87,7 @@ class RNSyncStorage {
             {
                 for (let i = 0; i < keys.length; i++) {
                     let key = keys[i];
-                    this.removeItem(key)
+                    this.removeItem(key, databaseName)
                 }
 
                 callback(null)
@@ -108,7 +108,7 @@ class RNSyncWrapper
         {
             var databaseUrl = cloudantServerUrl + '/' + databaseName;
 
-            rnsyncModule.init( databaseUrl, error =>
+            rnsyncModule.init( databaseUrl, databaseName, error =>
             {
                 callback( error );
                 if(error) reject(error);
@@ -117,7 +117,7 @@ class RNSyncWrapper
         } )
     }
 
-    create ( body, id, callback )
+    create ( body, id, , callback )
     {
         callback = callback || noop;
 
@@ -125,7 +125,7 @@ class RNSyncWrapper
         {
             callback = id;
 
-            id = body;
+            id = body;databaseName
 
             body = null;
         }
@@ -145,7 +145,7 @@ class RNSyncWrapper
 
         return new Promise( (resolve, reject) =>
         {
-            rnsyncModule.create( body, id, ( error, doc ) =>
+            rnsyncModule.create( body, id, databaseName, ( error, doc ) =>
             {
                 callback( error, doc );
                 if(error) reject(error);
@@ -154,13 +154,13 @@ class RNSyncWrapper
         })
     }
 
-    retrieve ( id, callback )
+    retrieve ( id, databaseName, callback )
     {
         callback = callback || noop;
 
         return new Promise( (resolve, reject) =>
         {
-            rnsyncModule.retrieve( id, ( error, doc ) =>
+            rnsyncModule.retrieve( id, databaseName, ( error, doc ) =>
             {
                 callback( error, doc );
                 if(error) reject(error);
@@ -169,17 +169,17 @@ class RNSyncWrapper
         })
     }
 
-    findOrCreate ( id, callback )
+    findOrCreate ( id, databaseName, callback )
     {
         callback = callback || noop;
 
         return new Promise( (resolve, reject) =>
         {
-            rnsyncModule.retrieve( id,  ( error, doc ) =>
+            rnsyncModule.retrieve( id, databaseName, ( error, doc ) =>
             {
                 if ( error === 404 )
                 {
-                    this.create( null, id, (error, doc) =>
+                    this.create( null, id, databaseName, (error, doc) =>
                     {
                         callback( error, doc );
                         if(error) reject(error);
@@ -196,7 +196,7 @@ class RNSyncWrapper
         })
     }
 
-    update ( id, rev, body, callback )
+    update ( id, rev, body, databaseName, callback )
     {
         callback = callback || noop;
 
@@ -210,7 +210,7 @@ class RNSyncWrapper
 
         return new Promise( (resolve, reject) =>
         {
-            rnsyncModule.update( id, rev, body, ( error, doc ) =>
+            rnsyncModule.update( id, rev, body, databaseName, ( error, doc ) =>
             {
                 callback( error, doc );
                 if(error) reject(error);
@@ -219,7 +219,7 @@ class RNSyncWrapper
         })
     }
 
-    delete ( id, callback )
+    delete ( id, databaseName, callback )
     {
         callback = callback || noop;
 
@@ -230,7 +230,7 @@ class RNSyncWrapper
 
         return new Promise( (resolve, reject) =>
         {
-            rnsyncModule.delete( id, ( error ) =>
+            rnsyncModule.delete( id, databaseName, ( error ) =>
             {
                 callback( error );
                 if(error) reject(error);
@@ -287,7 +287,7 @@ class RNSyncWrapper
 
     // For how to create a query: https://github.com/cloudant/CDTDatastore/blob/master/doc/query.md
     // The 'fields' arugment is for projection.  Its an array of fields that you want returned when you do not want the entire doc
-    find ( query, fields, callback )
+    find ( query, fields, databaseName, callback )
     {
         callback = callback || noop;
 
@@ -299,7 +299,7 @@ class RNSyncWrapper
 
         return new Promise( (resolve, reject) =>
         {
-            rnsyncModule.find( query, fields, ( error, docs ) =>
+            rnsyncModule.find( query, fields, databaseName, ( error, docs ) =>
             {
                 if ( !error && Platform.OS === "android" )
                 {
@@ -313,6 +313,10 @@ class RNSyncWrapper
 
         });
     }
+    
+    index
+    
+    // TODO: add deleteDatastore?
 }
 
 export const rnsyncStorage = new RNSyncStorage();
