@@ -319,7 +319,7 @@ class RNSyncWrapper
 
     return new Promise((resolve, reject) => {
       rnsyncModule.createIndexes(indexes, databaseName, (error, result) => {
-        callback( error, results );
+        callback( error, result );
         if(error) reject(error);
         else resolve(result)
       })
@@ -331,3 +331,4 @@ class RNSyncWrapper
 
 export const rnsyncStorage = new RNSyncStorage();
 export default new RNSyncWrapper();
+
