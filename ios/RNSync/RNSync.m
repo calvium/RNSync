@@ -63,7 +63,7 @@ RCT_EXPORT_METHOD(init: (NSString *)databaseUrl databaseName:(NSString*) databas
         return;
     }
     if (!datastores) {
-        datastores = [NSMutableDictionary new]
+        datastores = [NSMutableDictionary new];
     }
     
     // Make name of the datastore the same than the database
@@ -80,7 +80,7 @@ RCT_EXPORT_METHOD(init: (NSString *)databaseUrl databaseName:(NSString*) databas
     
     remoteDatabaseURL = [NSURL URLWithString:databaseUrl];
     
-    replicationManager = [[ReplicationManager alloc] initWithData:remoteDatabaseURL datastore:datastore replicatorFactory:replicatorFactory];
+    replicationManager = [[ReplicationManager alloc] initWithData:remoteDatabaseURL datastore:datastores[databaseName] replicatorFactory:replicatorFactory];
     
     callback(@[[NSNull null]]);
 }
@@ -241,7 +241,7 @@ RCT_EXPORT_METHOD(delete: (NSString *)id databaseName:(NSString*) databaseName c
     }
 }
 
-RCT_EXPORT_METHOD(deleteDatastoreWithName:(NSString*) databaseName callback(RCTResponseSenderBlock)callback)
+RCT_EXPORT_METHOD(deleteDatastoreWithName:(NSString*) databaseName callback:(RCTResponseSenderBlock)callback)
 {
     NSError *error = nil;
     
@@ -283,7 +283,7 @@ RCT_EXPORT_METHOD(find: (NSDictionary *)query fields:(NSArray *)fields databaseN
 }
 
 
-// indexes is an array of dictionaries with a single entry, the key is the name of the index and the value is an array of properties (NSStrins)
+// indexes is an array of dictionaries with a single entry, the key is the name of the index and the value is an array of properties (NSStrings)
 
 // types can be:
 // CDTQIndexTypeText = @"TEXT"
@@ -291,7 +291,7 @@ RCT_EXPORT_METHOD(find: (NSDictionary *)query fields:(NSArray *)fields databaseN
 // Types and indexes size needs to match
 
 
-RCT_EXPORT_METHOD(createIndexes: (NSArray*)indexes types: (NSArray*)types databaseName:(NSString*) databaseName callback:(RCTResponseSenderBlock)callback)
+RCT_EXPORT_METHOD(createIndexes:(NSArray*)indexes types:(NSArray*) types databaseName:(NSString*) databaseName callback:(RCTResponseSenderBlock)callback)
 {
     
     
@@ -312,9 +312,8 @@ RCT_EXPORT_METHOD(createIndexes: (NSArray*)indexes types: (NSArray*)types databa
     
     NSMutableArray* jsonIndexes = [NSMutableArray new];
     NSMutableArray* textIndexes = [NSMutableArray new];
-    NSMutableArray* computedIndexes = [NSMutableArray new];
     
-    NSError* error = nil;
+    __block NSError* error = nil;
     
     [types enumerateObjectsUsingBlock:^(NSString*  _Nonnull type, NSUInteger idx, BOOL * _Nonnull stop) {
         if([type isEqualToString:@"JSON"]) {
@@ -322,8 +321,8 @@ RCT_EXPORT_METHOD(createIndexes: (NSArray*)indexes types: (NSArray*)types databa
         } else if ([type isEqualToString:@"TEXT"]) {
             [textIndexes addObject:indexes[idx]];
         } else {
-            error = [[NSError alloc] initWithDomain:@"RNSync" code:-1 userInfo:@{@"message": "Non valid index type"}];
-            stop = TRUE;
+            error = [[NSError alloc] initWithDomain:@"RNSync" code:-1 userInfo:@{@"message": @"Non valid index type"}];
+            *stop = TRUE;
         }
     }];
     
@@ -337,11 +336,11 @@ RCT_EXPORT_METHOD(createIndexes: (NSArray*)indexes types: (NSArray*)types databa
                                                     ofType:CDTQIndexTypeJSON];
                 if (index == nil) {
                     error = [[NSError alloc] initWithDomain:@"RNSync" code:-2 userInfo:@{@"message": [NSString stringWithFormat:@"Non valid index build for %@ %@", [jsonIndex allKeys], [jsonIndex allValues]]}];
-                    stop = TRUE;
+                    *stop = TRUE;
                 }
             } else {
                 error = [[NSError alloc] initWithDomain:@"RNSync" code:-2 userInfo:@{@"message": [NSString stringWithFormat:@"Non valid input data to build index for %@ %@", [jsonIndex allKeys], [jsonIndex allValues]]}];
-                stop = TRUE;
+                *stop = TRUE;
             }
         }];
     }
@@ -354,7 +353,6 @@ RCT_EXPORT_METHOD(createIndexes: (NSArray*)indexes types: (NSArray*)types databa
             // http://tartarus.org/~martin/PorterStemmer/
             // https://www.sqlite.org/fts3.html#tokenizer  (point 8)
             NSDictionary *settings = @{@"tokenize": @"porter unicode61"};
-            NSString *name1 =
             
             [textIndexes enumerateObjectsUsingBlock:^(NSDictionary*  _Nonnull textIndex, NSUInteger idx, BOOL * _Nonnull stop) {
                 if([textIndex count] == 1) {
@@ -364,25 +362,27 @@ RCT_EXPORT_METHOD(createIndexes: (NSArray*)indexes types: (NSArray*)types databa
                                                       settings:settings];
                     if (index == nil) {
                         error = [[NSError alloc] initWithDomain:@"RNSync" code:-2 userInfo:@{@"message": [NSString stringWithFormat:@"Non valid index build for %@ %@", [textIndex allKeys], [textIndex allValues]]}];
-                        stop = TRUE;
+                        *stop = TRUE;
                     }
                 } else {
                     error = [[NSError alloc] initWithDomain:@"RNSync" code:-2 userInfo:@{@"message": [NSString stringWithFormat:@"Non valid input data to build index for %@ %@", [textIndex allKeys], [textIndex allValues]]}];
-                    stop = TRUE;
+                    *stop = TRUE;
                 }
             }];
         } else {
             NSLog(@"text search is not enabled");
-            error = [[NSError alloc] initWithDomain:@"RNSync" code:-2 userInfo:@{@"message": [NSString stringWithFormat:@"Non valid input data to build index for %@ %@", [jsonIndex allKeys], [jsonIndex allValues]]}];
+            error = [[NSError alloc] initWithDomain:@"RNSync" code:-2 userInfo:@{@"message": @"Not possible to create text indexes, review your config"}];
         }
     }
     
     if (!error) {
         [datastore updateAllIndexes]; // optimise times after pull but not necessary
         NSLog(@"indexes %@", [datastore listIndexes]);
-        callback( nil, [datastore listIndexes]);
+        callback(@[[NSNull null], [datastore listIndexes]]);
+    } else {
+        callback(@[error, [NSNull null]]);
     }
-    callback(error, nil);
+    
 }
 
 @end
