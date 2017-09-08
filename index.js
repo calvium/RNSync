@@ -314,12 +314,12 @@ class RNSyncWrapper
     });
   }
 
-  createIndexes(indexes, types, databaseName, callback) {
+  createIndexes(indexes, databaseName, callback) {
     callback = callback || noop;
 
     return new Promise((resolve, reject) => {
-      rnsyncModule.createIndexes(indexes, types, databaseName, (error, result) => {
-        callback( error, docs );
+      rnsyncModule.createIndexes(indexes, databaseName, (error, result) => {
+        callback( error, results );
         if(error) reject(error);
         else resolve(result)
       })
@@ -331,4 +331,3 @@ class RNSyncWrapper
 
 export const rnsyncStorage = new RNSyncStorage();
 export default new RNSyncWrapper();
-

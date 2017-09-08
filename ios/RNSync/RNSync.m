@@ -283,15 +283,19 @@ RCT_EXPORT_METHOD(find: (NSDictionary *)query fields:(NSArray *)fields databaseN
 }
 
 
-// indexes is an array of dictionaries with a single entry, the key is the name of the index and the value is an array of properties (NSStrings)
+// indexes is a dictionary of dictionaries <String>:<Array<String>>
+// indexes has this shape:
+// @{
+//   @"JSON": @{@"indexName":@[@"property1", @"property2"]},
+//   @"TEXT": @{@"indexName":@[@"property1", @"property2"]}
+// }
 
-// types can be:
+// currently types can be:
 // CDTQIndexTypeText = @"TEXT"
 // CDTQIndexTypeJSON = @"JSON"
-// Types and indexes size needs to match
 
 
-RCT_EXPORT_METHOD(createIndexes:(NSArray*)indexes types:(NSArray*) types databaseName:(NSString*) databaseName callback:(RCTResponseSenderBlock)callback)
+RCT_EXPORT_METHOD(createIndexes:(NSDictionary*)indexes databaseName:(NSString*) databaseName callback:(RCTResponseSenderBlock)callback)
 {
     
     
@@ -310,36 +314,20 @@ RCT_EXPORT_METHOD(createIndexes:(NSArray*)indexes types:(NSArray*) types databas
     // 5. If some index is nil return an error
     // 6. I all indexes exists then return success and update all indexes
     
-    NSMutableArray* jsonIndexes = [NSMutableArray new];
-    NSMutableArray* textIndexes = [NSMutableArray new];
+    NSDictionary* jsonIndexes = indexes[@"JSON"];
+    NSDictionary* textIndexes = indexes[@"TEXT"];
     
     __block NSError* error = nil;
     
-    [types enumerateObjectsUsingBlock:^(NSString*  _Nonnull type, NSUInteger idx, BOOL * _Nonnull stop) {
-        if([type isEqualToString:@"JSON"]) {
-            [jsonIndexes addObject:indexes[idx]];
-        } else if ([type isEqualToString:@"TEXT"]) {
-            [textIndexes addObject:indexes[idx]];
-        } else {
-            error = [[NSError alloc] initWithDomain:@"RNSync" code:-1 userInfo:@{@"message": @"Non valid index type"}];
-            *stop = TRUE;
-        }
-    }];
-    
-    if(jsonIndexes.count > 0 && !error) {
+    if(jsonIndexes.count > 0) {
         
-        [jsonIndexes enumerateObjectsUsingBlock:^(NSDictionary*  _Nonnull jsonIndex, NSUInteger idx, BOOL * _Nonnull stop) {
+        [jsonIndexes enumerateKeysAndObjectsUsingBlock:^(id  _Nonnull jsonKey, id  _Nonnull jsonObject, BOOL * _Nonnull stop) {
             
-            if([jsonIndex count] == 1) {
-                NSString* index = [datastore ensureIndexed:[jsonIndex allValues][0]
-                                                  withName:[jsonIndex allKeys][0]
-                                                    ofType:CDTQIndexTypeJSON];
-                if (index == nil) {
-                    error = [[NSError alloc] initWithDomain:@"RNSync" code:-2 userInfo:@{@"message": [NSString stringWithFormat:@"Non valid index build for %@ %@", [jsonIndex allKeys], [jsonIndex allValues]]}];
-                    *stop = TRUE;
-                }
-            } else {
-                error = [[NSError alloc] initWithDomain:@"RNSync" code:-2 userInfo:@{@"message": [NSString stringWithFormat:@"Non valid input data to build index for %@ %@", [jsonIndex allKeys], [jsonIndex allValues]]}];
+            NSString* index = [datastore ensureIndexed:jsonObject
+                                              withName:jsonKey
+                                                ofType:CDTQIndexTypeJSON];
+            if (index == nil) {
+                error = [[NSError alloc] initWithDomain:@"RNSync" code:-2 userInfo:@{@"message": [NSString stringWithFormat:@"Non valid index build for %@ %@", jsonKey, jsonObject]}];
                 *stop = TRUE;
             }
         }];
@@ -354,18 +342,13 @@ RCT_EXPORT_METHOD(createIndexes:(NSArray*)indexes types:(NSArray*) types databas
             // https://www.sqlite.org/fts3.html#tokenizer  (point 8)
             NSDictionary *settings = @{@"tokenize": @"porter unicode61"};
             
-            [textIndexes enumerateObjectsUsingBlock:^(NSDictionary*  _Nonnull textIndex, NSUInteger idx, BOOL * _Nonnull stop) {
-                if([textIndex count] == 1) {
-                    NSString* index = [datastore ensureIndexed:[textIndex allValues][0]
-                                                      withName:[textIndex allKeys][0]
-                                                        ofType:CDTQIndexTypeText
-                                                      settings:settings];
-                    if (index == nil) {
-                        error = [[NSError alloc] initWithDomain:@"RNSync" code:-2 userInfo:@{@"message": [NSString stringWithFormat:@"Non valid index build for %@ %@", [textIndex allKeys], [textIndex allValues]]}];
-                        *stop = TRUE;
-                    }
-                } else {
-                    error = [[NSError alloc] initWithDomain:@"RNSync" code:-2 userInfo:@{@"message": [NSString stringWithFormat:@"Non valid input data to build index for %@ %@", [textIndex allKeys], [textIndex allValues]]}];
+            [textIndexes enumerateKeysAndObjectsUsingBlock:^(id  _Nonnull textKey, id  _Nonnull textObject, BOOL * _Nonnull stop) {
+                NSString* index = [datastore ensureIndexed:textObject
+                                                  withName:textKey
+                                                    ofType:CDTQIndexTypeText
+                                                  settings:settings];
+                if (index == nil) {
+                    error = [[NSError alloc] initWithDomain:@"RNSync" code:-2 userInfo:@{@"message": [NSString stringWithFormat:@"Non valid index build for %@ %@", textKey, textObject]}];
                     *stop = TRUE;
                 }
             }];
