@@ -14,7 +14,7 @@ class RNSyncStorage {
         // value is a string, but we need a data blob
         let body = { value }
 
-        rnsyncModule.retrieve( key, ( error, doc ) =>
+        rnsyncModule.retrieve( key, databaseName, ( error, doc ) =>
         {
             if(error)     // should be 404
             {
@@ -117,7 +117,7 @@ class RNSyncWrapper
         } )
     }
 
-    create ( body, id, , callback )
+    create ( body, id, databaseName, callback )
     {
         callback = callback || noop;
 
@@ -313,9 +313,19 @@ class RNSyncWrapper
 
         });
     }
-    
-    index
-    
+
+    createIndexes(indexes, types, databaseName, callback) {
+      callback = callback || noop;
+
+      return new Promise((resolve, reject) => {
+            rsyncModule.createIndexes(indexes, types, databaseName, (error, result) => {
+              callback( error, docs );
+              if(error) reject(error);
+              else resolve(result)
+            })
+        });
+    }
+
     // TODO: add deleteDatastore?
 }
 
