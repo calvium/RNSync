@@ -90,7 +90,7 @@ RCT_EXPORT_METHOD(init: (NSString *)databaseUrl databaseName:(NSString*) databas
     callback(@[[NSNull null]]);
 }
 
-RCT_EXPORT_METHOD(replicatePush: (NSString*):databaseName (RCTResponseSenderBlock)callback)
+RCT_EXPORT_METHOD(replicatePush:(NSString*):databaseName (RCTResponseSenderBlock)callback)
 {
     ReplicationManager* replicationManager = replicationManagers[databaseName];
     if (!replicationManager) {
@@ -101,7 +101,7 @@ RCT_EXPORT_METHOD(replicatePush: (NSString*):databaseName (RCTResponseSenderBloc
     [replicationManager push: callback];
 }
 
-RCT_EXPORT_METHOD(replicatePull: (RCTResponseSenderBlock)callback)
+RCT_EXPORT_METHOD(replicatePull:(NSString*):databaseName (RCTResponseSenderBlock)callback)
 {
     ReplicationManager* replicationManager = replicationManagers[databaseName];
     if (!replicationManager) {
