@@ -240,12 +240,12 @@ class RNSyncWrapper
 
   }
 
-  replicateSync( callback )
+  replicateSync( databaseName, callback )
   {
     callback = callback || noop;
 
-    var pushPromise = this.replicatePush();
-    var pullPromise = this.replicatePull();
+    var pushPromise = this.replicatePush(databaseName);
+    var pullPromise = this.replicatePull(databaseName);
 
     return Promise.all([pushPromise, pullPromise])
       .then(callback)
@@ -255,13 +255,13 @@ class RNSyncWrapper
       })
   }
 
-  replicatePush ( callback )
+  replicatePush ( databaseName, callback )
   {
     callback = callback || noop;
 
     return new Promise( (resolve, reject) =>
     {
-      rnsyncModule.replicatePush( (error) =>
+      rnsyncModule.replicatePush( databaseName, (error) =>
       {
         callback( error );
         if(error) reject(error);
@@ -276,7 +276,7 @@ class RNSyncWrapper
 
     return new Promise( (resolve, reject) =>
     {
-      rnsyncModule.replicatePull( (error) =>
+      rnsyncModule.replicatePull( databaseName, (error) =>
       {
         callback( error );
         if(error) reject(error);
