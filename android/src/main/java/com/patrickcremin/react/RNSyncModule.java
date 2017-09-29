@@ -26,7 +26,6 @@ import com.cloudant.sync.replication.ErrorInfo;
 import com.cloudant.sync.replication.Replicator;
 import com.cloudant.sync.replication.ReplicatorBuilder;
 import com.facebook.react.bridge.WritableNativeArray;
-import com.facebook.react.bridge.WritableNativeMap;
 
 import com.google.gson.Gson;
 
@@ -37,7 +36,6 @@ import java.io.File;
 import java.net.URI;
 import java.util.HashMap;
 import java.util.Map;
-import java.util.Iterator;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.concurrent.CountDownLatch;
@@ -72,8 +70,8 @@ public class RNSyncModule extends ReactContextBaseJavaModule {
     private DatastoreManager manager;
     private Replicator replicator;
     private URI uri;
-    private Datastore ds;
-    private IndexManager im;
+    private HashMap<String,Datastore> datastores = new HashMap<>();
+    private HashMap<String,IndexManager> indexManagers = new HashMap<>();
 
     public RNSyncModule(ReactApplicationContext reactContext) {
         super(reactContext);
@@ -89,12 +87,15 @@ public class RNSyncModule extends ReactContextBaseJavaModule {
 
     // TODO let them name the datastore
     @ReactMethod
-    public void init(String databaseUrl, Callback callback) {
+    public void init(String databaseUrl, String databaseName, Callback callback) {
 
         try {
             uri = new URI(databaseUrl);
-            ds = manager.openDatastore("my_datastore");
-            im = new IndexManager(ds);
+            Datastore ds = manager.openDatastore(databaseName);
+            IndexManager im = new IndexManager(ds);
+
+            datastores.put(databaseName, ds);
+            indexManagers.put(databaseName, im);
         }
         catch (Exception e)
         {
@@ -102,12 +103,18 @@ public class RNSyncModule extends ReactContextBaseJavaModule {
             return;
         }
 
+        // Replicator factories?
         callback.invoke();
     }
 
     // TODO need push and pull replication functions
     @ReactMethod
-    public void replicatePush(Callback callback) {
+    public void replicatePush(String databaseName, Callback callback) {
+        Datastore ds = datastores.get(databaseName);
+        if (ds==null) {
+          callback.invoke("No datastore named " + databaseName);
+          return;
+        }
 
         // Replicate from the local to remote database
         Replicator replicator = ReplicatorBuilder.push().from(ds).to(uri).build();
@@ -141,7 +148,12 @@ public class RNSyncModule extends ReactContextBaseJavaModule {
     }
 
     @ReactMethod
-    public void replicatePull(Callback callback) {
+    public void replicatePull(String databaseName, Callback callback) {
+        Datastore ds = datastores.get(databaseName);
+        if (ds==null) {
+          callback.invoke("No datastore named " + databaseName);
+          return;
+        }
 
         // Replicate from the local to remote database
         Replicator replicator = ReplicatorBuilder.pull().from(uri).to(ds).build();
@@ -176,7 +188,12 @@ public class RNSyncModule extends ReactContextBaseJavaModule {
     }
 
     @ReactMethod
-    public void create(ReadableMap body, String id, Callback callback) {
+    public void create(ReadableMap body, String id, String databaseName, Callback callback) {
+        Datastore ds = datastores.get(databaseName);
+        if (ds==null) {
+          callback.invoke("No datastore named " + databaseName);
+          return;
+        }
 
         ReadableNativeMap nativeBody = (ReadableNativeMap) body;
 
@@ -212,8 +229,12 @@ public class RNSyncModule extends ReactContextBaseJavaModule {
 
     // TODO need ability to update and remove attachments
     @ReactMethod
-    public void addAttachment(String id, String name, String path, String type, Callback callback) {
-
+    public void addAttachment(String id, String name, String path, String type, String databaseName, Callback callback) {
+        Datastore ds = datastores.get(databaseName);
+        if (ds==null) {
+          callback.invoke("No datastore named " + databaseName);
+          return;
+        }
         try{
             DocumentRevision revision = ds.getDocument(id);
 
@@ -235,7 +256,12 @@ public class RNSyncModule extends ReactContextBaseJavaModule {
     }
 
     @ReactMethod
-    public void retrieve(String id, Callback callback) {
+    public void retrieve(String id, String databaseName, Callback callback) {
+        Datastore ds = datastores.get(databaseName);
+        if (ds==null) {
+          callback.invoke("No datastore named " + databaseName);
+          return;
+        }
         try{
             DocumentRevision revision = ds.getDocument(id);
 
@@ -250,8 +276,12 @@ public class RNSyncModule extends ReactContextBaseJavaModule {
     }
 
     @ReactMethod
-    public void update(String id, String rev, ReadableMap body, Callback callback) {
-
+    public void update(String id, String rev, ReadableMap body, String databaseName, Callback callback) {
+      Datastore ds = datastores.get(databaseName);
+      if (ds==null) {
+        callback.invoke("No datastore named " + databaseName);
+        return;
+      }
         try {
             DocumentRevision revision = ds.getDocument(id);
 
@@ -272,8 +302,12 @@ public class RNSyncModule extends ReactContextBaseJavaModule {
     }
 
     @ReactMethod
-    public void delete(String id, Callback callback) {
-
+    public void delete(String id, String databaseName, Callback callback) {
+      Datastore ds = datastores.get(databaseName);
+      if (ds==null) {
+        callback.invoke("No datastore named " + databaseName);
+        return;
+      }
         try {
             DocumentRevision revision = ds.getDocument(id);
 
@@ -289,8 +323,12 @@ public class RNSyncModule extends ReactContextBaseJavaModule {
     }
 
     @ReactMethod
-    public void find(ReadableMap query, ReadableArray fields, Callback callback) {
-
+    public void find(ReadableMap query, ReadableArray fields, String databaseName, Callback callback) {
+        IndexManager im = indexManagers.get(databaseName);
+        if (im == null) {
+          callback.invoke("No database named " + databaseName);
+          return;
+        }
         ReadableNativeMap nativeQuery = (ReadableNativeMap) query;
 
         QueryResult result;
