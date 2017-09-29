@@ -22,7 +22,7 @@
     NSURL *remoteDatabaseURL;
     RCTResponseSenderBlock replicatorDidCompleteCallback;
     RCTResponseSenderBlock replicatorDidErrorCallback;
-    ReplicationManager* replicationManager;
+    NSMutableDictionary *replicationManagers;
 }
 
 
@@ -80,18 +80,35 @@ RCT_EXPORT_METHOD(init: (NSString *)databaseUrl databaseName:(NSString*) databas
     
     remoteDatabaseURL = [NSURL URLWithString:databaseUrl];
     
-    replicationManager = [[ReplicationManager alloc] initWithData:remoteDatabaseURL datastore:datastores[databaseName] replicatorFactory:replicatorFactory];
+    if (!replicationManagers) {
+        replicationManagers = [NSMutableDictionary new];
+    }
+    ReplicationManager* replicationManager = [[ReplicationManager alloc] initWithData:remoteDatabaseURL datastore:datastores[databaseName] replicatorFactory:replicatorFactory];
+    
+    replicationManagers[databaseName] = replicationManager;
     
     callback(@[[NSNull null]]);
 }
 
-RCT_EXPORT_METHOD(replicatePush: (RCTResponseSenderBlock)callback)
+RCT_EXPORT_METHOD(replicatePush: (NSString*):databaseName (RCTResponseSenderBlock)callback)
 {
+    ReplicationManager* replicationManager = replicationManagers[databaseName];
+    if (!replicationManager) {
+        NSLog(@"No replication manager found for %@", databaseName);
+        callback(@[[NSNumber numberWithLong:99]]); // TODO: where are these codes defined?
+        return;
+    }
     [replicationManager push: callback];
 }
 
 RCT_EXPORT_METHOD(replicatePull: (RCTResponseSenderBlock)callback)
 {
+    ReplicationManager* replicationManager = replicationManagers[databaseName];
+    if (!replicationManager) {
+        NSLog(@"No replication manager found for %@", databaseName);
+        callback(@[[NSNumber numberWithLong:99]]); // TODO: where are these codes defined?
+        return;
+    }
     [replicationManager pull: callback];
 }
 
