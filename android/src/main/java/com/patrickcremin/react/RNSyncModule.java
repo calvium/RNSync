@@ -30,6 +30,7 @@ import com.facebook.react.bridge.WritableNativeArray;
 import com.google.gson.Gson;
 
 import android.content.Context;
+import android.util.Log;
 
 import java.io.File;
 
@@ -358,6 +359,13 @@ public class RNSyncModule extends ReactContextBaseJavaModule {
         }
 
         callback.invoke(null, docs);
+    }
+
+    @ReactMethod
+    public void createIndexes(ReadableMap indexes, String databaseName, Callback callback) {
+      Log.i("RNSyncModule", "createIndexes: " + indexes.toString());
+      // STUB implementation
+      callback.invoke(null);
     }
 
     private HashMap<String, Object> createDoc(DocumentRevision revision)
