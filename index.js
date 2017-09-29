@@ -270,7 +270,7 @@ class RNSyncWrapper
     });
   }
 
-  replicatePull ( callback )
+  replicatePull ( databaseName, callback )
   {
     callback = callback || noop;
 
