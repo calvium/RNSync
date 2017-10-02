@@ -440,7 +440,9 @@ public class RNSyncModule extends ReactContextBaseJavaModule {
                 Map<String, Object> listIndexes = indexManager.listIndexes();
                 Log.d("RNSyncModule", databaseName + " indexes " + listIndexes.toString());
 
-                callback.invoke(null, listIndexes);
+                // Can't send back a Map so, convert to WritableMap
+                WritableMap writableMap = createWriteableMapFromHashMap(new HashMap<>(listIndexes));
+                callback.invoke(null, writableMap);
             }
         });
     }
