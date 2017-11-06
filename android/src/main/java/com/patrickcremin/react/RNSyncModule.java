@@ -71,7 +71,7 @@ public class RNSyncModule extends ReactContextBaseJavaModule {
 
     private DatastoreManager manager;
     private Replicator replicator;
-    private URI uri;
+    private HashMap<String,URI> uris = new HashMap<>();
     private HashMap<String,Datastore> datastores = new HashMap<>();
     private HashMap<String,IndexManager> indexManagers = new HashMap<>();
 
@@ -99,10 +99,11 @@ public class RNSyncModule extends ReactContextBaseJavaModule {
     public void init(String databaseUrl, String databaseName, Callback callback) {
 
         try {
-            uri = new URI(databaseUrl);
+            URI uri = new URI(databaseUrl);
             Datastore ds = manager.openDatastore(databaseName);
             IndexManager im = new IndexManager(ds);
 
+            uris.put(databaseName, uri);
             datastores.put(databaseName, ds);
             indexManagers.put(databaseName, im);
         }
@@ -120,6 +121,7 @@ public class RNSyncModule extends ReactContextBaseJavaModule {
     @ReactMethod
     public void replicatePush(String databaseName, Callback callback) {
         Datastore ds = datastores.get(databaseName);
+        URI uri = uris.get(databaseName);
         if (ds==null) {
           callback.invoke("No datastore named " + databaseName);
           return;
@@ -159,6 +161,7 @@ public class RNSyncModule extends ReactContextBaseJavaModule {
     @ReactMethod
     public void replicatePull(String databaseName, Callback callback) {
         Datastore ds = datastores.get(databaseName);
+        URI uri = uris.get(databaseName);
         if (ds==null) {
           callback.invoke("No datastore named " + databaseName);
           return;
