@@ -326,7 +326,17 @@ class RNSyncWrapper
     });
   }
 
-  // TODO: add deleteDatastore?
+  deleteDatastoreWithName (databaseName, callback) {
+    callback = callback || noop;
+
+    return new Promise((resolve, reject) => {
+      rnsyncModule.deleteDatastoreWithName(databaseName, (error) => {
+        callback(error);
+        if(error) reject(error);
+        else resolve();
+      });
+    });
+  }
 }
 
 export const rnsyncStorage = new RNSyncStorage();

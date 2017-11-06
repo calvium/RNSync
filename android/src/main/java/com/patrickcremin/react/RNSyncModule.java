@@ -330,6 +330,18 @@ public class RNSyncModule extends ReactContextBaseJavaModule {
             return;
         }
     }
+    
+    @ReactMethod
+    public void deleteDatastoreWithName(String databaseName, Callback callback) {
+      try {
+        manager.deleteDatastore(databaseName);
+        callback.invoke();
+      }
+      catch (Exception e) {
+        callback.invoke(e.getMessage());
+        return;
+      }
+    }
 
     @ReactMethod
     public void find(ReadableMap query, ReadableArray fields, String databaseName, Callback callback) {
