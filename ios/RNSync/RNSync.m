@@ -209,7 +209,7 @@ RCT_EXPORT_METHOD(retrieve: (NSString *)id databaseName:(NSString*) databaseName
 }
 
 
-RCT_EXPORT_METHOD(retrieveFirstAttachmentsFor: (NSString *)id databaseName:(NSString*) databaseName callback:(RCTResponseSenderBlock)callback)
+RCT_EXPORT_METHOD(retrieveFirstAttachmentFor: (NSString *)id databaseName:(NSString*) databaseName callback:(RCTResponseSenderBlock)callback)
 {
     NSError *error = nil;
     
@@ -218,9 +218,9 @@ RCT_EXPORT_METHOD(retrieveFirstAttachmentsFor: (NSString *)id databaseName:(NSSt
     
     if(!error)
     {
-        NSDictionary<NSString, CDTAttachment> *attachments = revision.attachments;
+        NSDictionary *attachments = revision.attachments;
         __block CDTAttachment *att = nil;
-        [attachments enumerateKeysAndObjectsUsingBlock:(NSString* key, NSObject * object, BOOL *stop){
+        [attachments enumerateKeysAndObjectsUsingBlock:^(NSString* key, NSObject * object, BOOL *stop){
             // Assign first element in the dictionary
             NSLog(@"assigning value of key %@", key);
             att = object;
