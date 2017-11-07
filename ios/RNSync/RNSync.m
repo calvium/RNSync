@@ -223,13 +223,18 @@ RCT_EXPORT_METHOD(retrieveFirstAttachmentFor: (NSString *)id databaseName:(NSStr
         [attachments enumerateKeysAndObjectsUsingBlock:^(NSString* key, NSObject * object, BOOL *stop){
             // Assign first element in the dictionary
             NSLog(@"assigning value of key %@", key);
-            att = object;
-            stop = YES;
+            att = (CDTAttachment*)object;
+            *stop = YES;
         }];
-        NSData *imageData = [att dataFromAttachmentContent];
-        NSString* encodedString = [imageData base64EncodedStringWithOptions:0];
         
-        callback(@[[NSNull null], encodedString]);
+        if (att) {
+            NSData *imageData = [att dataFromAttachmentContent];
+            NSString* encodedString = [imageData base64EncodedStringWithOptions:0];
+            callback(@[[NSNull null], encodedString]);
+        }
+        else{
+            callback(@[[NSNull null], @""]);
+        }
     }
     else{
         callback(@[[NSNumber numberWithLong:error.code]]);
@@ -414,3 +419,4 @@ RCT_EXPORT_METHOD(createIndexes:(NSDictionary*)indexes databaseName:(NSString*) 
 }
 
 @end
+
