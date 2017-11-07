@@ -208,6 +208,34 @@ RCT_EXPORT_METHOD(retrieve: (NSString *)id databaseName:(NSString*) databaseName
     }
 }
 
+
+RCT_EXPORT_METHOD(retrieveFirstAttachmentsFor: (NSString *)id databaseName:(NSString*) databaseName callback:(RCTResponseSenderBlock)callback)
+{
+    NSError *error = nil;
+    
+    // Read a document
+    CDTDocumentRevision *revision = [datastores[databaseName] getDocumentWithId:id error:&error];
+    
+    if(!error)
+    {
+        NSDictionary<NSString, CDTAttachment> *attachments = revision.attachments;
+        __block CDTAttachment *att = nil;
+        [attachments enumerateKeysAndObjectsUsingBlock:(NSString* key, NSObject * object, BOOL *stop){
+            // Assign first element in the dictionary
+            NSLog(@"assigning value of key %@", key);
+            att = object;
+            stop = YES;
+        }];
+        NSData *imageData = [att dataFromAttachmentContent];
+        NSString* encodedString = [data base64EncodedStringWithOptions:0];
+        
+        callback(@[[NSNull null], encodedString]);
+    }
+    else{
+        callback(@[[NSNumber numberWithLong:error.code]]);
+    }
+}
+
 RCT_EXPORT_METHOD(update: (NSString *)id rev:(NSString *)rev body:(NSDictionary *)body databaseName:(NSString*) databaseName callback:(RCTResponseSenderBlock)callback)
 {
     NSError *error = nil;

@@ -169,6 +169,22 @@ class RNSyncWrapper
     })
   }
 
+  // This will pass in the callback the base64 encoded version of the attachement
+  retrieveretrieveFirstAttachmentFor ( id, databaseName, callback )
+  {
+    callback = callback || noop;
+
+    return new Promise( (resolve, reject) =>
+    {
+      rnsyncModule.retrieveFirstAttachmentFor( id, databaseName, ( error, data ) =>
+      {
+        callback( error, data );
+        if(error) reject(error);
+        else resolve(data)
+      } );
+    })
+  }
+
   findOrCreate ( id, databaseName, callback )
   {
     callback = callback || noop;
