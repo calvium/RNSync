@@ -227,7 +227,7 @@ RCT_EXPORT_METHOD(retrieveFirstAttachmentsFor: (NSString *)id databaseName:(NSSt
             stop = YES;
         }];
         NSData *imageData = [att dataFromAttachmentContent];
-        NSString* encodedString = [data base64EncodedStringWithOptions:0];
+        NSString* encodedString = [imageData base64EncodedStringWithOptions:0];
         
         callback(@[[NSNull null], encodedString]);
     }
