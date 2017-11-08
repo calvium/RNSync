@@ -208,8 +208,7 @@ RCT_EXPORT_METHOD(retrieve: (NSString *)id databaseName:(NSString*) databaseName
     }
 }
 
-
-RCT_EXPORT_METHOD(retrieveFirstAttachmentFor: (NSString *)id databaseName:(NSString*) databaseName callback:(RCTResponseSenderBlock)callback)
+RCT_EXPORT_METHOD(retrieveAllAttachmentsFor: (NSString *)id databaseName:(NSString*) databaseName callback:(RCTResponseSenderBlock)callback)
 {
     NSError *error = nil;
     
@@ -219,22 +218,14 @@ RCT_EXPORT_METHOD(retrieveFirstAttachmentFor: (NSString *)id databaseName:(NSStr
     if(!error)
     {
         NSDictionary *attachments = revision.attachments;
-        __block CDTAttachment *att = nil;
+        __block  NSMutableDictionary* dataBlobs = [@{} mutableCopy];
         [attachments enumerateKeysAndObjectsUsingBlock:^(NSString* key, NSObject * object, BOOL *stop){
-            // Assign first element in the dictionary
-            NSLog(@"assigning value of key %@", key);
-            att = (CDTAttachment*)object;
-            *stop = YES;
-        }];
-        
-        if (att) {
+            CDTAttachment *att = (CDTAttachment*)object;
             NSData *imageData = [att dataFromAttachmentContent];
             NSString* encodedString = [imageData base64EncodedStringWithOptions:0];
-            callback(@[[NSNull null], encodedString]);
-        }
-        else{
-            callback(@[[NSNull null], @""]);
-        }
+            dataBlobs[att.name] = encodedString;
+        }];
+        callback(@[[NSNull null], dataBlobs]);
     }
     else{
         callback(@[[NSNumber numberWithLong:error.code]]);

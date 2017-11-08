@@ -169,14 +169,16 @@ class RNSyncWrapper
     })
   }
 
-  // This will pass in the callback the base64 encoded version of the attachement
-  retrieveFirstAttachmentFor ( id, databaseName, callback )
+  // This will pass in the callback a dictionary with
+  // the name of the attachments as keys and
+  // the base64 encoded version of the attachement as value
+  retrieveAllAttachmentsFor ( id, databaseName, callback )
   {
     callback = callback || noop;
 
     return new Promise( (resolve, reject) =>
     {
-      rnsyncModule.retrieveFirstAttachmentFor( id, databaseName, ( error, data ) =>
+      rnsyncModule.retrieveAllAttachmentsFor( id, databaseName, ( error, data ) =>
       {
         callback( error, data );
         if(error) reject(error);
