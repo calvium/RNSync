@@ -159,6 +159,11 @@ RCT_EXPORT_METHOD(addAttachment: id name:(NSString*)name path:(NSString*)path ty
 {
     NSError *error = nil;
     
+    if(!id || !databaseName || !datastores[databaseName]) {
+        callback(@[[NSString stringWithFormat:@"Parameter error, id: %@, database: %@", id, databaseName]]);
+        return;
+    }
+    
     CDTDocumentRevision *revision = [datastores[databaseName] getDocumentWithId:id error:&error];
     
     if(error)
@@ -193,6 +198,11 @@ RCT_EXPORT_METHOD(retrieve: (NSString *)id databaseName:(NSString*) databaseName
 {
     NSError *error = nil;
     
+    if(!id || !databaseName || !datastores[databaseName]) {
+        callback(@[[NSString stringWithFormat:@"Parameter error, id: %@, database: %@", id, databaseName]]);
+        return;
+    }
+    
     // Read a document
     CDTDocumentRevision *revision = [datastores[databaseName] getDocumentWithId:id error:&error];
     
@@ -212,6 +222,12 @@ RCT_EXPORT_METHOD(retrieveAllAttachmentsFor: (NSString *)id databaseName:(NSStri
 {
     NSError *error = nil;
     
+    // Check if parameters are correct
+    if(!id || !databaseName || !datastores[databaseName]) {
+        callback(@[[NSString stringWithFormat:@"Parameter error, id: %@, database: %@", id, databaseName]]);
+        return;
+    }
+    
     // Read a document
     CDTDocumentRevision *revision = [datastores[databaseName] getDocumentWithId:id error:&error];
     
@@ -223,7 +239,7 @@ RCT_EXPORT_METHOD(retrieveAllAttachmentsFor: (NSString *)id databaseName:(NSStri
             CDTAttachment *att = (CDTAttachment*)object;
             NSData *imageData = [att dataFromAttachmentContent];
             NSString* encodedString = [imageData base64EncodedStringWithOptions:0];
-            dataBlobs[att.name] = encodedString;
+            dataBlobs[att.name] = [NSString stringWithFormat:@"data:%@;base64,%@", att.type, encodedString];
         }];
         callback(@[[NSNull null], dataBlobs]);
     }
@@ -235,6 +251,11 @@ RCT_EXPORT_METHOD(retrieveAllAttachmentsFor: (NSString *)id databaseName:(NSStri
 RCT_EXPORT_METHOD(update: (NSString *)id rev:(NSString *)rev body:(NSDictionary *)body databaseName:(NSString*) databaseName callback:(RCTResponseSenderBlock)callback)
 {
     NSError *error = nil;
+    
+    if(!id || !databaseName || !datastores[databaseName]) {
+        callback(@[[NSString stringWithFormat:@"Parameter error, id: %@, database: %@", id, databaseName]]);
+        return;
+    }
     
     // Read a document
     CDTDocumentRevision *retrieved = [datastores[databaseName] getDocumentWithId:id rev:rev error:&error];
@@ -259,14 +280,14 @@ RCT_EXPORT_METHOD(update: (NSString *)id rev:(NSString *)rev body:(NSDictionary 
 
 RCT_EXPORT_METHOD(delete: (NSString *)id databaseName:(NSString*) databaseName callback:(RCTResponseSenderBlock)callback)
 {
-    if(!id)
-    {
-        //NSArray *params = @[[NSNumber numberWithBool:deleted]];
-        callback(@[@"called delete without specifying the id"]);
-        return;
-    }
     
     NSError *error = nil;
+    
+    
+    if(!id || !databaseName || !datastores[databaseName]) {
+        callback(@[[NSString stringWithFormat:@"Parameter error, id: %@, database: %@", id, databaseName]]);
+        return;
+    }
     
     CDTDocumentRevision *retrieved = [datastores[databaseName] getDocumentWithId:id error:&error];
     
@@ -286,6 +307,12 @@ RCT_EXPORT_METHOD(deleteDatastoreWithName:(NSString*) databaseName callback:(RCT
 {
     NSError *error = nil;
     
+    
+    if(!databaseName || !datastores[databaseName]) {
+        callback(@[[NSString stringWithFormat:@"Parameter error, database: %@", databaseName]]);
+        return;
+    }
+    
     BOOL deleted = [manager deleteDatastoreNamed:databaseName error: &error];
     
     if(!error)
@@ -303,6 +330,12 @@ RCT_EXPORT_METHOD(deleteDatastoreWithName:(NSString*) databaseName callback:(RCT
 // to return and paging to get the rest
 RCT_EXPORT_METHOD(find: (NSDictionary *)query fields:(NSArray *)fields databaseName:(NSString*) databaseName callback:(RCTResponseSenderBlock)callback)
 {
+    
+    if(!databaseName || !datastores[databaseName]) {
+        callback(@[[NSString stringWithFormat:@"Parameter error, database: %@", databaseName]]);
+        return;
+    }
+    
     // TODO waste to new up resultList for every call
     NSMutableArray* resultList = [[NSMutableArray alloc] init];
     
@@ -339,6 +372,10 @@ RCT_EXPORT_METHOD(find: (NSDictionary *)query fields:(NSArray *)fields databaseN
 RCT_EXPORT_METHOD(createIndexes:(NSDictionary*)indexes databaseName:(NSString*) databaseName callback:(RCTResponseSenderBlock)callback)
 {
     
+    if(!databaseName || !datastores[databaseName]) {
+        callback(@[[NSString stringWithFormat:@"Parameter error, database: %@", databaseName]]);
+        return;
+    }
     
     CDTDatastore* datastore = datastores[databaseName];
     

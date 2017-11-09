@@ -171,7 +171,7 @@ class RNSyncWrapper
 
   // This will pass in the callback a dictionary with
   // the name of the attachments as keys and
-  // the base64 encoded version of the attachement as value
+  // the base64 encoded version of the attachement as value preceded by data:type;base64,
   retrieveAllAttachmentsFor ( id, databaseName, callback )
   {
     callback = callback || noop;
