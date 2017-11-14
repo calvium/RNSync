@@ -178,17 +178,12 @@ class RNSyncWrapper
 
     return new Promise( (resolve, reject) =>
     {
-      if(Platform.OS === 'android') {
-      	callback(null, {});
-      	resolve({});
-      } else {
-      	rnsyncModule.retrieveAllAttachmentsFor( id, databaseName, ( error, data ) =>
-      	{
-        	callback( error, data );
-        	if(error) reject(error);
-        	else resolve(data)
-      	} ); 
-      }
+      rnsyncModule.retrieveAllAttachmentsFor( id, databaseName, ( error, data ) =>
+      {
+        callback( error, data );
+        if(error) reject(error);
+        else resolve(data)
+      } );
     })
   }
 

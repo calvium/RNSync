@@ -3,6 +3,9 @@ package com.patrickcremin.react;
 import android.content.Context;
 import android.util.Log;
 
+import android.util.Base64;
+
+import com.cloudant.sync.datastore.Attachment;
 import com.cloudant.sync.datastore.Datastore;
 import com.cloudant.sync.datastore.DatastoreManager;
 import com.cloudant.sync.datastore.DocumentBodyFactory;
@@ -32,6 +35,7 @@ import com.facebook.react.bridge.WritableNativeArray;
 import com.google.gson.Gson;
 
 import java.io.File;
+import java.io.InputStream;
 import java.net.URI;
 import java.util.ArrayList;
 import java.util.HashMap;
@@ -286,6 +290,41 @@ public class RNSyncModule extends ReactContextBaseJavaModule {
             return;
         }
     }
+
+    @ReactMethod
+    public void retrieveAllAttachmentsFor(String id, String databaseName, Callback callback) {
+        Datastore ds = datastores.get(databaseName);
+        if (ds==null) {
+            callback.invoke("No datastore named " + databaseName);
+            return;
+        }
+        try{
+            DocumentRevision revision = ds.getDocument(id);
+            Map<String, Attachment> attachments = revision.getAttachments();
+            HashMap<String, Object> dataBlobs = new HashMap<>();
+            for (Map.Entry<String, Attachment> attachment : attachments.entrySet()) {
+                Attachment att = attachment.getValue();
+
+                if(att.encoding == Attachment.Encoding.Plain){
+                    InputStream inputStream = att.getInputStream();
+
+                    byte[] imageBytes = new byte[(int)inputStream.available()];
+                    inputStream.read(imageBytes, 0, imageBytes.length);
+                    inputStream.close();
+
+                    String encodedString = Base64.encodeToString(imageBytes, Base64.CRLF);
+
+                    dataBlobs.put(attachment.getKey(), "data:"+att.type+";base64,"+encodedString);
+                }
+            }
+            callback.invoke(null, this.createWriteableMapFromHashMap(dataBlobs));
+        }
+        catch (Exception e) {
+            callback.invoke(e.getMessage());
+            return;
+        }
+    }
+
 
     @ReactMethod
     public void update(String id, String rev, ReadableMap body, String databaseName, Callback callback) {
