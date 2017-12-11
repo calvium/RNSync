@@ -281,7 +281,12 @@ public class RNSyncModule extends ReactContextBaseJavaModule {
         try{
             DocumentRevision revision = ds.getDocument(id);
 
-            WritableMap doc = this.createWriteableMapFromHashMap(this.createDoc(revision));
+//            WritableMap doc = this.createWriteableMapFromHashMap(this.createDoc(revision));
+
+
+            String doc = new Gson().toJson(this.createDoc(revision));
+
+//            docs.pushString(jsonString);
 
             callback.invoke(null, doc);
         }
@@ -552,6 +557,7 @@ public class RNSyncModule extends ReactContextBaseJavaModule {
                     data.putMap(key, (WritableMap) value);
                     break;
                 case "java.util.HashMap":
+                case "java.util.LinkedHashMap":
                     data.putMap(key, this.createWriteableMapFromHashMap((HashMap<String, Object>)value));
                     break;
                 case "com.facebook.react.bridge.WritableNativeArray":

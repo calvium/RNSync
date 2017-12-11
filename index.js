@@ -162,9 +162,9 @@ class RNSyncWrapper
     {
       rnsyncModule.retrieve( id, databaseName, ( error, doc ) =>
       {
-        callback( error, doc );
+        callback( error, Platform.OS === 'android'? JSON.parse(doc) : doc);
         if(error) reject(error);
-        else resolve(doc)
+        else resolve(Platform.OS === 'android'? JSON.parse(doc) : doc)
       } );
     })
   }
